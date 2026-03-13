@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Menu Recommender - 3-Day Planner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .day-selector {
+            padding: 12px 20px;
+            border: 2px solid #667eea;
+            border-radius: 25px;
+            background: white;
+            color: #667eea;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        
+        .day-selector:focus,
+        .day-selector:hover {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .generate-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .days-container {
+            margin-top: 30px;
+        }
+        
+        .day-section {
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+        
+        .day-section.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .day-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .day-theme {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .combos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .combo-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #667eea;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .combo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .combo-card.combo-1 { border-top-color: #667eea; }
+        .combo-card.combo-2 { border-top-color: #ff6b6b; }
+        .combo-card.combo-3 { border-top-color: #feca57; }
+        
+        .combo-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .popularity-badge {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .combo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            position: relative;
+        }
+        
+        .combo-item:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.2em;
+            margin-top: 10px;
+            padding-top: 15px;
+            border-top: 2px solid #667eea;
+        }
+        
+        .combo-card.combo-2 .combo-item:last-child { color: #ff6b6b; border-top-color: #ff6b6b; }
+        .combo-card.combo-3 .combo-item:last-child { color: #feca57; border-top-color: #feca57; }
+        
+        .item-details {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .item-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 2px;
+        }
+        
+        .item-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 0.8em;
+        }
+        
+        .taste-tag {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .taste-spicy { background: #ff6b6b; color: white; }
+        .taste-sweet { background: #feca57; color: white; }
+        .taste-savory { background: #667eea; color: white; }
+        
+        .popularity-stars {
+            color: #ffd700;
+        }
+        
+        .item-calories {
+            background: #f8f9fa;
+            padding: 4px 10px;
+            border-radius: 15px;
+            color: #666;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .calorie-bar {
+            background: #e9ecef;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 15px 0 10px 0;
+            position: relative;
+        }
+        
+        .calorie-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.8s ease;
+            position: relative;
+        }
+        
+        .combo-card.combo-1 .calorie-fill { background: linear-gradient(90deg, #28a745, #667eea); }
+        .combo-card.combo-2 .calorie-fill { background: linear-gradient(90deg, #28a745, #ff6b6b); }
+        .combo-card.combo-3 .calorie-fill { background: linear-gradient(90deg, #28a745, #feca57); }
+        
+        .calorie-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 0.8em;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .summary-stats {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 40px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .ai-badge {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .combos-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            .day-header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Menu Recommender</h1>
+        <p class="subtitle">Smart 3-day combo planner based on popularity scores & taste profiles!</p>
+        
+        <div class="controls">
+            <select class="day-selector" id="daySelector">
+                <option value="">Select Starting Day</option>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+                <option value="Saturday">Saturday</option>
+                <option value="Sunday">Sunday</option>
+            </select>
+            
+            <button class="generate-btn" onclick="generate3DayCombos()" id="generateBtn" disabled>
+                🎯 Generate AI-Optimized Plan
+            </button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>AI is analyzing popularity scores and creating optimal combos...</p>
+        </div>
+        
+        <div class="days-container" id="daysContainer">
+            <div style="color: #666; font-style: italic; margin-top: 50px;">
+                Select a starting day above to generate your AI-optimized 3-day combo plan!
+            </div>
+        </div>
+        
+        <div class="summary-stats" id="summaryStats" style="display: none;">
+            <div class="stat-item">
+                <div class="stat-value" id="totalDays">3</div>
+                <div class="stat-label">Total Days</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalCombos">9</div>
+                <div class="stat-label">Total Combos</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="avgPopularity">0</div>
+                <div class="stat-label">Avg Popularity</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="avgCalories">0</div>
+                <div class="stat-label">Avg Calories</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Repeated Combos</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Menu items from CSV with popularity scores and taste profiles
+        const menuItems = {
+            mains: [
+                { name: "Chicken Biryani", calories: 600, taste: "spicy", popularity: 0.95 },
+                { name: "Paneer Butter Masala", calories: 450, taste: "spicy", popularity: 0.9 },
+                { name: "Masala Dosa", calories: 480, taste: "savory", popularity: 0.88 },
+                { name: "Chole Bhature", calories: 650, taste: "spicy", popularity: 0.85 },
+                { name: "Rajma Chawal", calories: 500, taste: "savory", popularity: 0.8 },
+                { name: "Vegetable Pulao", calories: 400, taste: "savory", popularity: 0.7 },
+                { name: "Grilled Sandwich", calories: 370, taste: "savory", popularity: 0.6 }
+            ],
+            sides: [
+                { name: "Garlic Naan", calories: 200, taste: "savory", popularity: 0.9 },
+                { name: "Paneer Tikka", calories: 300, taste: "spicy", popularity: 0.85 },
+                { name: "French Fries", calories: 350, taste: "savory", popularity: 0.8 },
+                { name: "Mixed Veg Salad", calories: 150, taste: "sweet", popularity: 0.75 },
+                { name: "Curd Rice", calories: 250, taste: "savory", popularity: 0.7 },
+                { name: "Papad", calories: 100, taste: "savory", popularity: 0.65 }
+            ],
+            drinks: [
+                { name: "Sweet Lassi", calories: 220, taste: "sweet", popularity: 0.9 },
+                { name: "Masala Chaas", calories: 100, taste: "spicy", popularity: 0.8 },
+                { name: "Iced Tea", calories: 120, taste: "sweet", popularity: 0.78 },
+                { name: "Cold Coffee", calories: 180, taste: "sweet", popularity: 0.75 },
+                { name: "Lemon Soda", calories: 90, taste: "savory", popularity: 0.7 },
+                { name: "Coconut Water", calories: 60, taste: "sweet", popularity: 0.6 }
+            ]
+        };
+
+        const themes = ["Spicy", "Sweet", "Savory"];
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+        // Enable/disable generate button based on day selection
+        document.getElementById('daySelector').addEventListener('change', function() {
+            const generateBtn = document.getElementById('generateBtn');
+            generateBtn.disabled = !this.value;
+        });
+
+        function getWeightedRandomItem(array, theme = null) {
+            // Filter by theme if specified
+            let filteredArray = array;
+            if (theme) {
+                const themeMap = {
+                    'Spicy': 'spicy',
+                    'Sweet': 'sweet',
+                    'Savory': 'savory'
+                };
+                filteredArray = array.filter(item => item.taste === themeMap[theme]);
+                // If no items match theme, use all items
+                if (filteredArray.length === 0) filteredArray = array;
+            }
+            
+            // Create weighted selection based on popularity scores
+            const totalWeight = filteredArray.reduce((sum, item) => sum + item.popularity, 0);
+            let random = Math.random() * totalWeight;
+            
+            for (const item of filteredArray) {
+                random -= item.popularity;
+                if (random <= 0) return item;
+            }
+            
+            // Fallback to last item
+            return filteredArray[filteredArray.length - 1];
+        }
+
+        function getNextDays(startDay, count = 3) {
+            const startIndex = days.indexOf(startDay);
+            const nextDays = [];
+            
+            for (let i = 0; i < count; i++) {
+                const dayIndex = (startIndex + i) % days.length;
+                nextDays.push(days[dayIndex]);
+            }
+            
+            return nextDays;
+        }
+
+        function generateOptimalCombo(existingCombos, theme = null) {
+            const maxCalories = 800;
+            let bestCombo = null;
+            let bestScore = 0;
+            let attempts = 0;
+
+            while (attempts < 300) {
+                const main = getWeightedRandomItem(menuItems.mains, theme);
+                const side = getWeightedRandomItem(menuItems.sides, theme);
+                const drink = getWeightedRandomItem(menuItems.drinks, theme);
+                
+                const comboSignature = `${main.name}-${side.name}-${drink.name}`;
+                
+                // Check if this exact combination already exists
+                if (existingCombos.includes(comboSignature)) {
+                    attempts++;
+                    continue;
+                }
+                
+                const total = main.calories + side.calories + drink.calories;
+                
+                if (total <= maxCalories) {
+                    // Calculate combo score based on popularity and calorie efficiency
+                    const popularityScore = (main.popularity + side.popularity + drink.popularity) / 3;
+                    const calorieEfficiency = total / maxCalories; // Higher calories = better value
+                    const comboScore = (popularityScore * 0.7) + (calorieEfficiency * 0.3);
+                    
+                    if (comboScore > bestScore) {
+                        bestCombo = { 
+                            main, 
+                            side, 
+                            drink, 
+                            total, 
+                            signature: comboSignature,
+                            popularityScore: popularityScore,
+                            comboScore: comboScore
+                        };
+                        bestScore = comboScore;
+                    }
+                }
+                attempts++;
+            }
+
+            return bestCombo;
+        }
+
+        function generate3DayCombos() {
+            const selectedDay = document.getElementById('daySelector').value;
+            if (!selectedDay) return;
+
+            const loading = document.getElementById('loading');
+            const daysContainer = document.getElementById('daysContainer');
+            const summaryStats = document.getElementById('summaryStats');
+            
+            // Show loading
+            loading.style.display = 'block';
+            daysContainer.innerHTML = '';
+            summaryStats.style.display = 'none';
+            
+            setTimeout(() => {
+                const nextDays = getNextDays(selectedDay, 3);
+                const existingCombos = [];
+                const allDaysData = [];
+                
+                // Generate combos for each day
+                nextDays.forEach((day, dayIndex) => {
+                    const dayTheme = themes[dayIndex % themes.length]; // Rotate themes
+                    const dayCombos = [];
+                    
+                    // Generate 3 optimal combos for this day
+                    for (let i = 0; i < 3; i++) {
+                        const combo = generateOptimalCombo(existingCombos, dayTheme);
+                        if (combo) {
+                            existingCombos.push(combo.signature);
+                            dayCombos.push(combo);
+                        }
+                    }
+                    
+                    // Sort combos by score (best first)
+                    dayCombos.sort((a, b) => b.comboScore - a.comboScore);
+                    
+                    allDaysData.push({
+                        day: day,
+                        theme: dayTheme,
+                        combos: dayCombos
+                    });
+                });
+                
+                displayAllDays(allDaysData);
+                updateSummaryStats(allDaysData);
+                loading.style.display = 'none';
+            }, 3000);
+        }
+
+        function getStars(popularity) {
+            const stars = Math.round(popularity * 5);
+            return '★'.repeat(stars) + '☆'.repeat(5 - stars);
+        }
+
+        function displayAllDays(allDaysData) {
+            const daysContainer = document.getElementById('daysContainer');
+            
+            allDaysData.forEach((dayData, dayIndex) => {
+                const daySection = document.createElement('div');
+                daySection.className = 'day-section';
+                
+                daySection.innerHTML = `
+                    <div class="day-header">
+                        <span>${dayData.day}</span>
+                        <span class="day-theme">${dayData.theme} Theme</span>
+                    </div>
+                    <div class="combos-grid" id="combos-day-${dayIndex}">
+                    </div>
+                `;
+                
+                daysContainer.appendChild(daySection);
+                
+                // Add combos to this day
+                const combosGrid = daySection.querySelector('.combos-grid');
+                dayData.combos.forEach((combo, comboIndex) => {
+                    const comboCard = document.createElement('div');
+                    comboCard.className = `combo-card combo-${comboIndex + 1}`;
+                    
+                    comboCard.innerHTML = `
+                        <div class="combo-title">
+                            <span>Combo ${comboIndex + 1}</span>
+                            <span class="popularity-badge">${(combo.popularityScore * 100).toFixed(0)}% Popular</span>
+                        </div>
+                        <div class="combo-item">
+                            <div class="item-details">
+                                <span class="item-name">${combo.main.name}</span>
+                                <div class="item-meta">
+                                    <span class="taste-tag taste-${combo.main.taste}">${combo.main.taste}</span>
+                                    <span class="popularity-stars">${getStars(combo.main.popularity)}</span>
+                                </div>
+                            </div>
+                            <span class="item-calories">${combo.main.calories} cal</span>
+                        </div>
+                        <div class="combo-item">
+                            <div class="item-details">
+                                <span class="item-name">${combo.side.name}</span>
+                                <div class="item-meta">
+                                    <span class="taste-tag taste-${combo.side.taste}">${combo.side.taste}</span>
+                                    <span class="popularity-stars">${getStars(combo.side.popularity)}</span>
+                                </div>
+                            </div>
+                            <span class="item-calories">${combo.side.calories} cal</span>
+                        </div>
+                        <div class="combo-item">
+                            <div class="item-details">
+                                <span class="item-name">${combo.drink.name}</span>
+                                <div class="item-meta">
+                                    <span class="taste-tag taste-${combo.drink.taste}">${combo.drink.taste}</span>
+                                    <span class="popularity-stars">${getStars(combo.drink.popularity)}</span>
+                                </div>
+                            </div>
+                            <span class="item-calories">${combo.drink.calories} cal</span>
+                        </div>
+                        <div class="calorie-bar">
+                            <div class="calorie-fill" style="width: ${(combo.total / 800) * 100}%">
+                                <div class="calorie-text">${combo.total}/800</div>
+                            </div>
+                        </div>
+                        <div class="combo-item">
+                            <span class="item-name">Total</span>
+                            <span class="item-calories">${combo.total} cal</span>
+                        </div>
+                    `;
+                    
+                    combosGrid.appendChild(comboCard);
+                });
+                
+                // Animate day section appearance
+                setTimeout(() => {
+                    daySection.classList.add('show');
+                }, (dayIndex + 1) * 400);
+            });
+            
+            // Add AI badge
+            const badge = document.createElement('div');
+            badge.className = 'ai-badge';
+            badge.textContent = '🤖 AI-Optimized Combos Based on Popularity & Taste Profiles';
+            daysContainer.appendChild(badge);
+        }
+
+        function updateSummaryStats(allDaysData) {
+            const summaryStats = document.getElementById('summaryStats');
+            
+            let totalCalories = 0;
+            let totalCombos = 0;
+            let totalPopularity = 0;
+            
+            allDaysData.forEach(dayData => {
+                dayData.combos.forEach(combo => {
+                    totalCalories += combo.total;
+                    totalCombos++;
+                    totalPopularity += combo.popularityScore;
+                });
+            });
+            
+            const avgCalories = Math.round(totalCalories / totalCombos);
+            const avgPopularity = ((totalPopularity / totalCombos) * 100).toFixed(0);
+            
+            document.getElementById('avgCalories').textContent = avgCalories;
+            document.getElementById('avgPopularity').textContent = avgPopularity + '%';
+            
+            setTimeout(() => {
+                summaryStats.style.display = 'block';
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
